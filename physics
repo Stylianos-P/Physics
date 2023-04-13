@@ -1,0 +1,107 @@
+import pygame
+import random
+import sys
+# Constants for screen dimensions
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+
+# Constants for particle properties
+PARTICLE_RADIUS = 2
+PARTICLE_MASS = 1
+PARTICLE_MAX_VELOCITY = 5
+GRAVITATIONAL_CONSTANT = 1
+
+class Particle:
+    def __init__(self, x, y, vx, vy, mass, radius):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+        self.mass = mass
+        self.radius = radius
+
+def check_collision(particle1, particle2):
+    distance = ((particle1.x - particle2.x) ** 2 + (particle1.y - particle2.y) ** 2) ** 0.5
+    radius_sum = particle1.radius + particle2.radius
+    return distance < radius_sum
+
+def perform_collision(particle1, particle2):
+    v1_f = ((particle1.mass - particle2.mass) * particle1.vx + 2 * particle2.mass * particle2.vx) / (particle1.mass + particle2.mass)
+    v2_f = ((particle2.mass - particle1.mass) * particle2.vx + 2 * particle1.mass * particle1.vx) / (particle1.mass + particle2.mass)
+    particle1.vx = v1_f
+    particle2.vx = v2_f
+
+def update_particles(particles, time_step, mouse_pos):
+    for particle in particles:
+        # Calculate gravitational attraction towards mouse position
+        dx = mouse_pos[0] - particle.x
+        dy = mouse_pos[1] - particle.y
+        distance = max(1, ((dx ** 2) + (dy ** 2)) ** 0.5)  # Avoid division by zero
+        fx = GRAVITATIONAL_CONSTANT * particle.mass * dx / distance
+        fy = GRAVITATIONAL_CONSTANT * particle.mass * dy / distance
+
+        particle.vx += fx * time_step
+        particle.vy += fy * time_step
+
+        particle.x += particle.vx * time_step
+        particle.y += particle.vy * time_step
+
+        # Check for collision with screen edges and update velocities accordingly
+        if particle.x - particle.radius < 0 or particle.x + particle.radius > SCREEN_WIDTH:
+            particle.vx = -particle.vx
+        if particle.y - particle.radius < 0 or particle.y + particle.radius > SCREEN_HEIGHT:
+            particle.vy = -particle.vy
+
+def draw_particles(screen, particles):
+    for particle in particles:
+        pygame.draw.circle(screen, (random.randint(100,255),random.randint(100,255),random.randint(100,255)), (int(particle.x), int(particle.y)), particle.radius)
+
+
+pygame.init()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Particle Collisions with Mouse Gravity")
+
+# Create particles with random initial positions, velocities, and radii
+particles = []
+for i in range(10):
+    x = random.randint(PARTICLE_RADIUS, SCREEN_WIDTH - PARTICLE_RADIUS)
+    y = random.randint(PARTICLE_RADIUS, SCREEN_HEIGHT - PARTICLE_RADIUS)
+    vx = 0#random.uniform(-PARTICLE_MAX_VELOCITY, PARTICLE_MAX_VELOCITY)
+    vy = 0#random.uniform(-PARTICLE_MAX_VELOCITY, PARTICLE_MAX_VELOCITY)
+    radius = PARTICLE_RADIUS
+    particle = Particle(x, y, vx, vy, PARTICLE_MASS, radius)
+    particles.append(particle)
+
+
+# Main game loop
+clock = pygame.time.Clock()
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+    # Get mouse position
+    mouse_pos = pygame.mouse.get_pos()
+
+    # Update particles
+    update_particles(particles, 0.5, mouse_pos)
+
+    # Check for collisions between particles
+    for i in range(len(particles)):
+        for j in range(i + 1, len(particles)):
+            if check_collision(particles[i], particles[j]):
+                perform_collision(particles[i], particles[j])
+
+    # Fill the screen with black color
+    screen.fill((0, 0, 0))
+
+    # Draw particles on screen
+    draw_particles(screen, particles)
+
+    # Update display
+    pygame.display.flip()
+
+    # Cap frame rate to 60 FPS
+    clock.tick(60)
+
